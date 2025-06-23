@@ -1,0 +1,230 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Tabela de usuários
+model User {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  password      String
+  name          String?
+  hierarquia_id Int      @default(1)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  sessions      Session[]
+  empresas      UserEmpresa[]
+  notasMovimentacao NotaMovimentacao[]
+
+  @@map("users")
+}
+
+// Tabela de sessões
+model Session {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// Tabela de empresas
+model Empresa {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  cnpj      String   @unique
+  endereco  String?
+  telefone  String?
+  email     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  filiais   Filial[]
+  usuarios  UserEmpresa[]
+  produtos  Produto[]
+
+  @@map("empresas")
+}
+
+// Tabela de filiais
+model Filial {
+  id        Int      @id @default(autoincrement())
+  empresaId Int
+  nome      String
+  endereco  String?
+  telefone  String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  empresa   Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  estoque   Estoque[]
+  movimentacoes MovimentacaoEstoque[]
+
+  @@map("filiais")
+}
+
+// Tabela de relacionamento usuário-empresa
+model UserEmpresa {
+  id        Int     @id @default(autoincrement())
+  userId    Int
+  empresaId Int
+  role      String  @default("user") // admin, user, viewer
+  active    Boolean @default(true)
+  createdAt DateTime @default(now())
+
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, empresaId])
+  @@map("user_empresas")
+}
+
+// Tabela de categorias de produtos
+model Categoria {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  descricao String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  produtos  Produto[]
+
+  @@map("categorias")
+}
+
+// Tabela de produtos
+model Produto {
+  id          Int      @id @default(autoincrement())
+  empresaId   Int
+  categoriaId Int?
+  codigo      String
+  nome        String
+  descricao   String?
+  unidade     String   @default("UN") // UN, KG, L, etc
+  preco       Decimal  @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  empresa     Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  categoria   Categoria? @relation(fields: [categoriaId], references: [id])
+  estoque     Estoque[]
+  movimentacoes MovimentacaoEstoque[]
+  itensNota   ItemNotaMovimentacao[]
+
+  @@unique([empresaId, codigo])
+  @@map("produtos")
+}
+
+// Tabela de estoque
+model Estoque {
+  id         Int     @id @default(autoincrement())
+  produtoId  Int
+  filialId   Int
+  quantidade Decimal @default(0)
+  estoqueMin Decimal @default(0)
+  estoqueMax Decimal @default(0)
+  updatedAt  DateTime @updatedAt
+
+  produto    Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  filial     Filial  @relation(fields: [filialId], references: [id], onDelete: Cascade)
+
+  @@unique([produtoId, filialId])
+  @@map("estoque")
+}
+
+// Tabela de movimentações de estoque
+model MovimentacaoEstoque {
+  id          Int      @id @default(autoincrement())
+  produtoId   Int
+  filialId    Int
+  notaId      Int?
+  tipo        String   // ENTRADA, SAIDA, TRANSFERENCIA, AJUSTE
+  quantidade  Decimal
+  valorUnitario Decimal @default(0)
+  observacao  String?
+  dataMovimento DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  produto     Produto  @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  filial      Filial   @relation(fields: [filialId], references: [id], onDelete: Cascade)
+  nota        NotaMovimentacao? @relation(fields: [notaId], references: [id])
+
+  @@map("movimentacoes_estoque")
+}
+
+// Tabela de fornecedores
+model Fornecedor {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  cnpj      String?  @unique
+  endereco  String?
+  telefone  String?
+  email     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notasMovimentacao NotaMovimentacao[]
+
+  @@map("fornecedores")
+}
+
+// Tabela de notas de entrada/saída
+model NotaMovimentacao {
+  id          Int      @id @default(autoincrement())
+  numero      String   @unique
+  tipo        String   // ENTRADA, SAIDA
+  fornecedorId Int?
+  userId      Int
+  data        DateTime @default(now())
+  observacoes String?
+  motivo      String?
+  destinatario String?
+  valorTotal  Decimal  @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  fornecedor  Fornecedor? @relation(fields: [fornecedorId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+  itens       ItemNotaMovimentacao[]
+  movimentacoes MovimentacaoEstoque[]
+
+  @@map("notas_movimentacao")
+}
+
+// Tabela de itens das notas
+model ItemNotaMovimentacao {
+  id          Int      @id @default(autoincrement())
+  notaId      Int
+  produtoId   Int
+  quantidade  Decimal
+  valorUnitario Decimal @default(0)
+  valorTotal  Decimal  @default(0)
+  createdAt   DateTime @default(now())
+
+  nota        NotaMovimentacao @relation(fields: [notaId], references: [id], onDelete: Cascade)
+  produto     Produto @relation(fields: [produtoId], references: [id])
+
+  @@map("itens_nota_movimentacao")
+}

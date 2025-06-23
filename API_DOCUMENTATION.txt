@@ -1,0 +1,297 @@
+DOCUMENTAÇÃO DA API - BACKEND STOCKFLOW
+=============================================
+
+INFORMAÇÕES GERAIS:
+- Base URL: http://localhost:3000
+- Autenticação: Bearer Token (JWT-like)
+- Content-Type: application/json para requisições POST/PUT
+
+=============================================
+ENDPOINTS DISPONÍVEIS:
+=============================================
+
+1. HELLO WORLD
+==============
+Método: GET
+URL: /
+Descrição: Endpoint básico para testar se a API está funcionando
+
+RESPOSTA:
+{
+  "message": "Hello World!"
+}
+
+2. HEALTH CHECK
+===============
+Método: GET
+URL: /health
+Descrição: Verifica se a aplicação está saudável
+
+RESPOSTA:
+{
+  "status": "OK",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "uptime": "5 minutes"
+}
+
+3. REGISTRO DE USUÁRIO
+======================
+Método: POST
+URL: /auth/register
+Descrição: Cadastra um novo usuário no sistema
+
+BODY (JSON):
+{
+  "email": "usuario@exemplo.com",
+  "senhaLogin": "minhasenha123"
+}
+
+RESPOSTA DE SUCESSO:
+{
+  "success": true,
+  "message": "Usuário Cadastrado!"
+}
+
+RESPOSTA DE ERRO:
+{
+  "success": false,
+  "error": "Email já está em uso."
+}
+
+4. LOGIN
+========
+Método: POST
+URL: /auth/login
+Descrição: Autentica o usuário e retorna token de sessão
+
+BODY (JSON):
+{
+  "email": "usuario@exemplo.com",
+  "senhaLogin": "minhasenha123"
+}
+
+RESPOSTA DE SUCESSO:
+{
+  "success": true,
+  "user": {
+    "id": 1,
+    "login": "usuario@exemplo.com"
+  },
+  "token": "abc123def456ghi789"
+}
+
+RESPOSTA DE ERRO:
+{
+  "error": "Usuário não encontrado"
+}
+ou
+{
+  "error": "Senha incorreta"
+}
+
+5. VERIFICAR SESSÃO
+===================
+Método: GET
+URL: /auth/check-session
+Descrição: Verifica se o token de sessão ainda é válido
+Headers: Authorization: Bearer TOKEN_AQUI
+
+RESPOSTA DE SUCESSO:
+{
+  "logged_in": true,
+  "user_id": 1,
+  "user_login": "usuario@exemplo.com"
+}
+
+RESPOSTA DE ERRO:
+{
+  "logged_in": false
+}
+
+6. DADOS DO USUÁRIO
+===================
+Método: GET
+URL: /auth/me
+Descrição: Retorna dados do usuário autenticado
+Headers: Authorization: Bearer TOKEN_AQUI
+
+RESPOSTA DE SUCESSO:
+{
+  "id": 1,
+  "email": "usuario@exemplo.com",
+  "name": "usuario",
+  "active": true
+}
+
+RESPOSTA DE ERRO:
+{
+  "error": "Token não fornecido"
+}
+ou
+{
+  "error": "Sessão inválida ou expirada"
+}
+
+7. LOGOUT
+=========
+Método: POST
+URL: /auth/logout
+Descrição: Invalida o token de sessão atual
+Headers: Authorization: Bearer TOKEN_AQUI
+
+RESPOSTA:
+{
+  "success": true,
+  "message": "Logout realizado com sucesso"
+}
+
+8. INSERIR NOTA
+===============
+Método: POST
+URL: /notes/insert
+Descrição: Insere uma nova nota (endpoint placeholder)
+Headers: Authorization: Bearer TOKEN_AQUI
+
+BODY (JSON):
+{
+  "titulo": "Título da nota",
+  "conteudo": "Conteúdo da nota aqui"
+}
+
+RESPOSTA:
+{
+  "success": true,
+  "message": "Endpoint de inserção de notas - implementar conforme necessário",
+  "user_id": 1
+}
+
+=============================================
+CÓDIGOS DE STATUS HTTP:
+=============================================
+
+200 - OK: Requisição bem-sucedida
+201 - Created: Recurso criado com sucesso
+400 - Bad Request: Dados inválidos ou ausentes
+401 - Unauthorized: Token inválido ou ausente
+500 - Internal Server Error: Erro interno do servidor
+
+=============================================
+FLUXO DE AUTENTICAÇÃO PARA FRONTEND:
+=============================================
+
+1. REGISTRO:
+   - Envie POST para /auth/register com email e senha
+   - Se success: true, usuário foi criado
+
+2. LOGIN:
+   - Envie POST para /auth/login com email e senha
+   - Se success: true, guarde o token retornado
+   - Use este token em todas as requisições seguintes
+
+3. VERIFICAÇÃO:
+   - Antes de cada operação, pode verificar se o token ainda é válido
+   - Envie GET para /auth/check-session com o token no header
+
+4. REQUISIÇÕES AUTENTICADAS:
+   - Inclua sempre o header: Authorization: Bearer SEU_TOKEN
+   - Se receber erro 401, redirecione para login
+
+5. LOGOUT:
+   - Envie POST para /auth/logout com o token
+   - Remova o token do armazenamento local
+
+=============================================
+EXEMPLOS DE CÓDIGO PARA FRONTEND:
+=============================================
+
+JAVASCRIPT/FETCH:
+
+// Login
+const login = async (email, password) => {
+  const response = await fetch('http://localhost:3000/auth/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      email: email,
+      senhaLogin: password
+    })
+  });
+  
+  const data = await response.json();
+  if (data.success) {
+    localStorage.setItem('token', data.token);
+    return data;
+  }
+  throw new Error(data.error);
+};
+
+// Requisição autenticada
+const getProfile = async () => {
+  const token = localStorage.getItem('token');
+  const response = await fetch('http://localhost:3000/auth/me', {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  
+  return await response.json();
+};
+
+// Logout
+const logout = async () => {
+  const token = localStorage.getItem('token');
+  await fetch('http://localhost:3000/auth/logout', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  
+  localStorage.removeItem('token');
+};
+
+=============================================
+OBSERVAÇÕES IMPORTANTES:
+=============================================
+
+1. Tokens têm validade de 24 horas
+2. Sempre verifique se há token antes de fazer requisições autenticadas
+3. Trate os erros adequadamente no frontend
+4. Guarde o token de forma segura (localStorage ou sessionStorage)
+5. O endpoint /notes/insert é um placeholder - pode ser customizado conforme necessário
+6. Todos os endpoints retornam JSON
+7. Use HTTPS em produção para segurança
+
+=============================================
+TRATAMENTO DE ERROS NO FRONTEND:
+=============================================
+
+// Exemplo de tratamento de erro
+const makeAuthenticatedRequest = async (url, options = {}) => {
+  const token = localStorage.getItem('token');
+  
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  if (response.status === 401) {
+    // Token inválido - redirecionar para login
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Erro na requisição');
+  }
+  
+  return await response.json();
+}; 
