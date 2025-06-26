@@ -2,11 +2,13 @@ import { Router } from 'express';
 import { AuthController } from './controllers/AuthController';
 import { NotasController } from './controllers/NotasController';
 import { DashboardController } from './controllers/DashboardController';
+import { ServicesController } from './controllers/ServicesController';
 
 const router = Router();
 const authController = new AuthController();
 const notasController = new NotasController();
 const dashboardController = new DashboardController();
+const servicesController = new ServicesController();
 
 // Rotas básicas
 router.get('/', (req, res) => {
@@ -72,6 +74,15 @@ router.get('/notas/:id', async (req, res) => {
 
 router.post('/notas/:id/saida-parcial', async (req, res) => {
   await notasController.saidaParcialProdutos(req, res);
+});
+
+//Rotas de serviços
+router.get('/services/produtos', async (req, res) => {
+  await servicesController.CallProdutosService(req, res);
+});
+
+router.get('/services/notas', async (req, res) => {
+  await servicesController.CallNotasService(req, res);
 });
 
 export { router }; 
